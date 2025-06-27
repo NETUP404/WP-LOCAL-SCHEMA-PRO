@@ -1,0 +1,59 @@
+msgid "Business name"
+msgstr "Business name"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Store"
+msgstr "Store"
+
+msgid "Local directories"
+msgstr "Local directories"
+
+msgid "Enable Local Schema for this site"
+msgstr "Enable Local Schema for this site"
+
+msgid "Already registered?"
+msgstr "Already registered?"
+
+msgid "Business hours"
+msgstr "Business hours"
+
+msgid "Main URL"
+msgstr "Main URL"
+
+msgid "Average rating"
+msgstr "Average rating"
+
+msgid "Reviews"
+msgstr "Reviews"
+
+msgid "Organization"
+msgstr "Organization"
+
+msgid "Person"
+msgstr "Person"
+
+msgid "Extra Local SEO"
+msgstr "Extra Local SEO"
+
+msgid "Quick local directories linker"
+msgstr "Quick local directories linker"
+
+msgid "Consistent NAP (Name, Address, Phone) check."
+msgstr "Consistent NAP (Name, Address, Phone) check."
+
+msgid "Local SEO checklist."
+msgstr "Local SEO checklist."
+
+msgid "Generate QR for location."
+msgstr "Generate QR for location."
+
+msgid "Rich snippets validator."
+msgstr "Rich snippets validator."
+
+msgid "You must fill in name, address, city and phone to optimize local SEO (consistent NAP)."
+msgstr "You must fill in name, address, city and phone to optimize local SEO (consistent NAP)."
+
+msgid "Your basic NAP data is filled."
+msgstr "Your basic NAP data is filled."

@@ -1,0 +1,28 @@
+.wp-lsp-buttons {
+  margin-top: 32px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wp-lsp-buttons .button {
+  font-size: 14px;
+  padding: 6px 14px;
+  min-width: 90px;
+  max-width: 100%;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.wp-lsp-content {
+  padding: 32px 32px 60px 32px;
+  background: #fafcff;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .wp-lsp-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
