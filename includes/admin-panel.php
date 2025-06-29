@@ -1,6 +1,36 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+// --- YOAST SEO ORGANIZATION AUTO-IMPORT & WARNING BLOCK ---
+function wp_lsp_check_yoast_organization_block(&$options) {
+    $yoast = get_option('wpseo_titles');
+    if (!$yoast || !is_array($yoast)) return;
+
+    $has_org = !empty($yoast['company_name']) || !empty($yoast['company_logo']);
+    if (!$has_org) return;
+
+    if (!empty($_POST['wp_lsp_import_yoast_org'])) {
+        if (!empty($yoast['company_name']) && empty($options['name']))  $options['name'] = $yoast['company_name'];
+        if (!empty($yoast['company_logo']) && empty($options['logo']))  $options['logo'] = $yoast['company_logo'];
+        if (!empty($yoast['company_url']) && empty($options['url']))    $options['url']  = $yoast['company_url'];
+        update_option('wp_local_schema_pro_options', $options);
+        echo '<div class="notice notice-success"><p>Datos de Yoast importados correctamente. Recuerda desactivar el schema de Organización en Yoast SEO para evitar duplicidad.</p></div>';
+    }
+    ?>
+    <div class="notice notice-warning" style="margin:20px 0;">
+        <p>
+            <b>¡Atención!</b> Se han detectado datos de empresa en <b>Yoast SEO</b>.<br>
+            Puedes <b>importar automáticamente</b> nombre, logo y URL aquí.<br>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="wp_lsp_import_yoast_org" value="1">
+                <button type="submit" class="button-primary">Importar datos de Yoast SEO</button>
+            </form>
+        </p>
+        <p style="margin-top:8px;color:#a77a10;">Tras importar, ve a Yoast &gt; Ajustes &gt; Empresa y elimina o desactiva la Organización en el schema para evitar conflictos.</p>
+    </div>
+    <?php
+}
+
 add_action('admin_menu', function() {
     add_menu_page(
         'WP Local Schema PRO',
@@ -13,6 +43,123 @@ add_action('admin_menu', function() {
     );
 });
 
+// === BLOQUE HORARIO UNIVERSAL ===
+function wp_lsp_render_hours_block($prefix, $options) {
+    $days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    $opening = $options[$prefix.'openingHoursSpecification'] ?? [];
+    ?>
+    <div>
+        <label><b>Horario habitual</b></label>
+        <table class="wp-lsp-hours-table">
+            <?php foreach($days as $idx => $day) {
+                $o = $opening[$idx]['opens'] ?? '';
+                $c = $opening[$idx]['closes'] ?? '';
+                $closed = empty($o) && empty($c);
+                ?>
+                <tr>
+                    <td><?php echo $day; ?></td>
+                    <td>
+                        <input type="time" name="wp_local_schema_pro_options[<?php echo $prefix; ?>openingHoursSpecification][<?php echo $idx; ?>][opens]" value="<?php echo esc_attr($o); ?>" <?php if($closed) echo 'disabled'; ?>>
+                        -
+                        <input type="time" name="wp_local_schema_pro_options[<?php echo $prefix; ?>openingHoursSpecification][<?php echo $idx; ?>][closes]" value="<?php echo esc_attr($c); ?>" <?php if($closed) echo 'disabled'; ?>>
+                        <label style="margin-left:10px;">
+                            <span class="wp-lsp-switch" title="Cerrado este día">
+                                <input type="checkbox" class="wp-lsp-day-closed" data-row="<?php echo $prefix.$idx; ?>" <?php checked($closed); ?>>
+                                <span class="wp-lsp-slider"></span>
+                            </span>
+                            <span style="margin-left:8px; font-weight:bold; color:<?php echo $closed ? '#c00' : '#2196F3'; ?>">
+                                <?php echo $closed ? 'Cerrado' : 'Abierto'; ?>
+                            </span>
+                        </label>
+                    </td>
+                </tr>
+            <?php } ?>
+        </table>
+        <label style="margin-top:15px;display:block;"><b>Horarios especiales</b> (periodos excepcionales, puedes añadir varios)</label>
+        <div id="wp-lsp-special-hours-list-<?php echo $prefix; ?>">
+            <?php
+            $specials = $options[$prefix.'specialOpeningHoursSpecification'] ?? [];
+            if(empty($specials)) $specials = [[]];
+            foreach($specials as $i=>$sp) { ?>
+                <div class="wp-lsp-special-hours-block">
+                    <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][from]" value="<?php echo esc_attr($sp['from']??''); ?>"> a
+                    <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][to]" value="<?php echo esc_attr($sp['to']??''); ?>">
+                    <span>Días:</span>
+                    <?php foreach($days as $j=>$d) { ?>
+                        <label><input type="checkbox" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][days][<?php echo $j; ?>]" <?php checked(!empty($sp['days'][$j])); ?>><?php echo $d[0]; ?></label>
+                    <?php } ?>
+                    <input type="time" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][opens]" value="<?php echo esc_attr($sp['opens']??''); ?>">
+                    -
+                    <input type="time" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][closes]" value="<?php echo esc_attr($sp['closes']??''); ?>">
+                    <button type="button" class="wp-lsp-remove-special-hours">Eliminar</button>
+                </div>
+            <?php } ?>
+        </div>
+        <button type="button" id="wp-lsp-add-special-hours-<?php echo $prefix; ?>" style="margin-top:8px;">+ Añadir periodo especial</button>
+    </div>
+    <style>
+    .wp-lsp-switch {position:relative;display:inline-block;width:44px;height:24px;vertical-align:middle;}
+    .wp-lsp-switch input {opacity:0;width:0;height:0;}
+    .wp-lsp-slider {position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#2196F3;transition:.4s;border-radius:24px;}
+    .wp-lsp-switch input:checked + .wp-lsp-slider {background:#2196F3;}
+    .wp-lsp-slider:before {position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;transition:.4s;border-radius:50%;}
+    .wp-lsp-switch input:checked + .wp-lsp-slider:before {transform:translateX(20px);}
+    .wp-lsp-hours-table td {padding:3px 8px;}
+    .wp-lsp-special-hours-block {margin-bottom:10px;padding:8px 10px;background:#f5f5f5;border-radius:6px;}
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded',function(){
+        document.querySelectorAll('.wp-lsp-day-closed').forEach(function(cb){
+            cb.addEventListener('change',function(){
+                let row=this.getAttribute('data-row');
+                let prefix = row.replace(/[0-9]/g, '');
+                let idx = row.replace(/\D/g,'');
+                let opens=document.querySelector('input[name="wp_local_schema_pro_options['+prefix+'openingHoursSpecification]['+idx+'][opens]"]');
+                let closes=document.querySelector('input[name="wp_local_schema_pro_options['+prefix+'openingHoursSpecification]['+idx+'][closes]"]');
+                let label=this.closest('label').querySelector('span[style*="font-weight:bold"]');
+                opens.disabled=closes.disabled=this.checked;
+                if(this.checked){
+                    opens.value=''; closes.value='';
+                    label.textContent='Cerrado';
+                    label.style.color='#c00';
+                } else {
+                    label.textContent='Abierto';
+                    label.style.color='#2196F3';
+                }
+            });
+        });
+        document.querySelectorAll('[id^=wp-lsp-add-special-hours-]').forEach(function(btn){
+            btn.onclick=function(){
+                let prefix = btn.id.replace('wp-lsp-add-special-hours-','');
+                let list=document.getElementById('wp-lsp-special-hours-list-'+prefix);
+                let i=list.children.length;
+                let html=`<div class="wp-lsp-special-hours-block">
+                    <input type="date" name="wp_local_schema_pro_options[${prefix}specialOpeningHoursSpecification][${i}][from]" value="">
+                    a <input type="date" name="wp_local_schema_pro_options[${prefix}specialOpeningHoursSpecification][${i}][to]" value="">
+                    <span>Días:</span>
+                    <?php foreach($days as $j=>$d) { ?>
+                        <label><input type="checkbox" name="wp_local_schema_pro_options[${prefix}specialOpeningHoursSpecification][${i}][days][<?php echo $j; ?>]"><?php echo $d[0]; ?></label>
+                    <?php } ?>
+                    <input type="time" name="wp_local_schema_pro_options[${prefix}specialOpeningHoursSpecification][${i}][opens]" value="">
+                    -
+                    <input type="time" name="wp_local_schema_pro_options[${prefix}specialOpeningHoursSpecification][${i}][closes]" value="">
+                    <button type="button" class="wp-lsp-remove-special-hours">Eliminar</button>
+                </div>`;
+                list.insertAdjacentHTML('beforeend',html);
+                list.querySelectorAll('.wp-lsp-remove-special-hours').forEach(function(btn){
+                    btn.onclick=function(){ this.parentNode.remove(); };
+                });
+            };
+        });
+        document.querySelectorAll('.wp-lsp-remove-special-hours').forEach(function(btn){
+            btn.onclick=function(){ this.parentNode.remove(); };
+        });
+    });
+    </script>
+    <?php
+}
+// === FIN BLOQUE HORARIO UNIVERSAL ===
+
 function wp_lsp_render_admin_panel() {
     $schema_fields = wp_lsp_get_schema_fields();
     $options = get_option('wp_local_schema_pro_options');
@@ -23,41 +170,71 @@ function wp_lsp_render_admin_panel() {
     $org_fields = array_map(function($f){return 'org_'.$f;}, array_keys($schema_fields['Organization']));
     $person_fields = array_map(function($f){return 'person_'.$f;}, array_keys($schema_fields['Person']));
 
-    // Campos avanzados
-    $extra_fields = [
-        'Organization'   => ['founders','employees','awards','areaServed','slogan','brand','contactPoint','duns','globalLocationNumber','hasOfferCatalog','isicV4','leiCode','member','numberOfEmployees','owns','parentOrganization','subOrganization','taxID','vatID','department','logo','email','telephone','address','sameAs','url','image','aggregateRating','review','openingHoursSpecification'],
-        'LocalBusiness'  => ['priceRange','currenciesAccepted','paymentAccepted','openingHoursSpecification','areaServed','serviceType','hasMerchantReturnPolicy'],
-        'Store'          => ['branchOf','currenciesAccepted','paymentAccepted','openingHoursSpecification','brand','areaServed'],
-        'Person'         => ['jobTitle','worksFor','affiliation','alumniOf','award','birthDate','deathDate','gender','hasCredential','hasOccupation','knowsAbout','knowsLanguage','nationality','honorificPrefix','honorificSuffix','memberOf','relatedTo','spouse','telephone','email','url','sameAs','image'],
-    ];
-
+    // --- SOLO CAMPOS NO HORARIO EN FIELDS ---
     $sections = [
-        'general'    => ['title'=>'General',   'icon'=>'<span style="color:#183153;">🏢</span>', 'fields'=>['name','description','image','telephone','email']],
+        'general'    => [
+            'title'=>'General',
+            'icon'=>'<span style="color:#183153;">🏠</span>',
+            'fields'=>[
+                'name', 'legalName', 'brand', 'alternateName',
+                'description', 'image', 'logo', 'url',
+                'telephone', 'faxNumber', 'email',
+                'taxID', 'vatID', 'numberOfEmployees',
+                'founder', 'foundingDate', 'awards',
+                'areaServed', 'currenciesAccepted', 'paymentAccepted',
+                'slogan', 'parentOrganization', 'hasOfferCatalog',
+                'privacyPolicy', 'termsOfService', 'cookiesPolicy'
+            ]
+        ],
         'ubicacion'  => ['title'=>'Ubicación', 'icon'=>'<span style="color:#183153;">📍</span>', 'fields'=>['address','geo','hasMap','areaServed']],
-        'horario'    => ['title'=>'Horario',   'icon'=>'<span style="color:#183153;">🕒</span>', 'fields'=>['openingHoursSpecification','specialOpeningHoursSpecification']],
+        'horario'    => ['title'=>'Horario',   'icon'=>'<span style="color:#183153;">🕒</span>', 'fields'=>[]], // No fields de horario aquí
         'urls'       => ['title'=>'URLs',      'icon'=>'<span style="color:#183153;">🔗</span>', 'fields'=>['url','externalUrls']],
         'redes'      => ['title'=>'Redes',     'icon'=>'<span style="color:#183153;">🌐</span>', 'fields'=>['sameAs','googleBusiness']],
-        'tienda'     => ['title'=>'Tienda',    'icon'=>'<span style="color:#183153;">🛒</span>', 'fields'=>array_merge(array_keys($schema_fields['Store']), $extra_fields['Store'])],
+        'tienda'     => [
+            'title'=>'Tienda',
+            'icon'=>'<span style="color:#183153;">🛒</span>',
+            // Quita openingHoursSpecification/specialOpeningHoursSpecification aquí
+            'fields'=>array_filter(array_keys($schema_fields['Store']), function($f){
+                return !in_array($f, ['openingHoursSpecification','specialOpeningHoursSpecification']);
+            })
+        ],
         'opiniones'  => ['title'=>'Opiniones', 'icon'=>'<span style="color:#183153;">⭐</span>', 'fields'=>['aggregateRating','review']],
-        'orgpersona' => ['title'=>'Org/Pers',  'icon'=>'<span style="color:#183153;">🏢👤</span>', 'fields'=>array_merge($org_fields, $person_fields, $extra_fields['Organization'], $extra_fields['Person'])],
+        'orgpersona' => [
+            'title'=>'Org/Pers',
+            'icon'=>'<span style="color:#183153;">🏠👤</span>',
+            // Quita openingHoursSpecification/specialOpeningHoursSpecification aquí también
+            'fields'=>array_filter(
+                array_merge(
+                    $org_fields, $person_fields,
+                    array_diff(array_keys($schema_fields['Organization']), ['openingHoursSpecification','specialOpeningHoursSpecification']),
+                    array_diff(array_keys($schema_fields['Person']), ['openingHoursSpecification','specialOpeningHoursSpecification'])
+                ), function($f){
+                    return !in_array($f, ['org_openingHoursSpecification','org_specialOpeningHoursSpecification','person_openingHoursSpecification','person_specialOpeningHoursSpecification']);
+                }
+            )
+        ],
     ];
+
     $section_enabled = $options['section_enabled'] ?? [];
 
     ?>
     <div class="wrap wp-lsp-app">
         <h1>WP Local Schema PRO</h1>
+        <?php
+        wp_lsp_check_yoast_organization_block($options);
+        ?>
         <form method="post" action="options.php" id="wp-lsp-form" autocomplete="off">
             <?php settings_fields('wp_local_schema_pro_group'); do_settings_sections('wp-local-schema-pro'); ?>
             <div style="margin-bottom:20px;">
                 <label style="font-weight:bold;">Activar Schema Local para este sitio</label>
-                <label class="wp-lsp-switch">
+                <label class="wp-lsp-switch" title="Activa o desactiva el schema para toda la web.">
                     <input type="checkbox" id="wp-lsp-global-enable" name="wp_local_schema_pro_options[enabled]" value="1" <?php checked($enabled); ?>>
                     <span class="wp-lsp-slider"></span>
                 </label>
-                <span class="wp-lsp-help" title="Si desactivas, el schema no se insertará en tu web.">ⓘ</span>
+                <span class="wp-lsp-help" title="Si desactivas, el schema no se insertará en tu web.">ℹ️</span>
             </div>
             <label for="schema_type"><b>Tipo de Schema (negocio):</b></label>
-            <select id="schema_type" name="wp_local_schema_pro_options[schema_type]">
+            <select id="schema_type" name="wp_local_schema_pro_options[schema_type]" title="Tipo de entidad principal para la web. Lo normal es LocalBusiness.">
                 <?php foreach ($schema_fields as $type => $fields): ?>
                     <option value="<?php echo esc_attr($type); ?>" <?php selected($current_type, $type); ?>><?php echo esc_html($type); ?></option>
                 <?php endforeach; ?>
@@ -65,11 +242,11 @@ function wp_lsp_render_admin_panel() {
             <hr>
             <div class="wp-lsp-tabs">
                 <?php $i=0; foreach ($sections as $sec_key => $sec): ?>
-                    <button type="button" class="wp-lsp-tab<?php if($i==0)echo ' active'; ?>" data-tab="<?php echo esc_attr($sec_key); ?>">
+                    <button type="button" class="wp-lsp-tab<?php if($i==0)echo ' active'; ?>" data-tab="<?php echo esc_attr($sec_key); ?>" title="Ver sección <?php echo esc_attr($sec['title']); ?>">
                         <?php echo $sec['icon']; ?>
                         <?php echo esc_html($sec['title']); ?>
-                        <span class="wp-lsp-section-switch">
-                            <label class="wp-lsp-switch">
+                        <span class="wp-lsp-section-switch" title="Activa/desactiva la sección entera">
+                            <label class="wp-lsp-switch" title="Activa o desactiva esta sección">
                                 <input type="checkbox" name="wp_local_schema_pro_options[section_enabled][<?php echo $sec_key; ?>]" value="1" <?php checked($section_enabled[$sec_key] ?? true); ?>>
                                 <span class="wp-lsp-slider"></span>
                             </label>
@@ -83,119 +260,19 @@ function wp_lsp_render_admin_panel() {
                         <?php
                         // ----- HORARIO -----
                         if ($sec_key == 'horario') {
-                            ?>
-                            <div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
-                                <b>Horario comercial:</b> Define el horario habitual por días. Solo puede haber uno.<br>
-                                <b>Horarios especiales:</b> Añade periodos con fecha inicio/fin y días/horas excepcionales (ej: festivos, campaña navideña, vacaciones).
-                            </div>
-                            <div>
-                                <label><b>Horario habitual</b></label>
-                                <table class="wp-lsp-hours-table">
-                                    <?php
-                                    $days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-                                    $opening = $options['openingHoursSpecification'] ?? [];
-                                    foreach($days as $idx => $day) {
-                                        $o = $opening[$idx]['opens'] ?? '';
-                                        $c = $opening[$idx]['closes'] ?? '';
-                                        $closed = empty($o) && empty($c);
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $day; ?></td>
-                                            <td>
-                                                <input type="time" name="wp_local_schema_pro_options[openingHoursSpecification][<?php echo $idx; ?>][opens]" value="<?php echo esc_attr($o); ?>" <?php if($closed) echo 'disabled'; ?>>
-                                                -
-                                                <input type="time" name="wp_local_schema_pro_options[openingHoursSpecification][<?php echo $idx; ?>][closes]" value="<?php echo esc_attr($c); ?>" <?php if($closed) echo 'disabled'; ?>>
-                                                <label style="margin-left:10px;"><input type="checkbox" class="wp-lsp-day-closed" data-row="<?php echo $idx; ?>" <?php checked($closed); ?>> Cerrado</label>
-                                            </td>
-                                        </tr>
-                                    <?php } ?>
-                                </table>
-                                <script>
-                                document.addEventListener('DOMContentLoaded',function(){
-                                    document.querySelectorAll('.wp-lsp-day-closed').forEach(function(cb){
-                                        cb.addEventListener('change',function(){
-                                            let row=this.getAttribute('data-row');
-                                            let opens=document.querySelector('input[name="wp_local_schema_pro_options[openingHoursSpecification]['+row+'][opens]"]');
-                                            let closes=document.querySelector('input[name="wp_local_schema_pro_options[openingHoursSpecification]['+row+'][closes]"]');
-                                            opens.disabled=closes.disabled=this.checked;
-                                            if(this.checked){ opens.value=''; closes.value=''; }
-                                        });
-                                    });
-                                });
-                                </script>
-                                <label><b>Horarios especiales</b> (periodos excepcionales, puedes añadir varios)</label>
-                                <div id="wp-lsp-special-hours-list">
-                                    <?php
-                                    $specials = $options['specialOpeningHoursSpecification'] ?? [];
-                                    if(empty($specials)) $specials = [[]];
-                                    foreach($specials as $i=>$sp) { ?>
-                                        <div class="wp-lsp-special-hours-block">
-                                            <input type="date" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][<?php echo $i; ?>][from]" value="<?php echo esc_attr($sp['from']??''); ?>"> a
-                                            <input type="date" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][<?php echo $i; ?>][to]" value="<?php echo esc_attr($sp['to']??''); ?>">
-                                            <span>Días:</span>
-                                            <?php foreach($days as $j=>$d) { ?>
-                                                <label><input type="checkbox" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][<?php echo $i; ?>][days][<?php echo $j; ?>]" <?php checked(!empty($sp['days'][$j])); ?>><?php echo $d[0]; ?></label>
-                                            <?php } ?>
-                                            <input type="time" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][<?php echo $i; ?>][opens]" value="<?php echo esc_attr($sp['opens']??''); ?>">
-                                            -
-                                            <input type="time" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][<?php echo $i; ?>][closes]" value="<?php echo esc_attr($sp['closes']??''); ?>">
-                                            <button type="button" class="wp-lsp-remove-special-hours">Eliminar</button>
-                                        </div>
-                                    <?php } ?>
-                                </div>
-                                <button type="button" id="wp-lsp-add-special-hours">+ Añadir periodo especial</button>
-                                <script>
-                                document.addEventListener('DOMContentLoaded',function(){
-                                    document.getElementById('wp-lsp-add-special-hours').onclick=function(){
-                                        let list=document.getElementById('wp-lsp-special-hours-list');
-                                        let i=list.children.length;
-                                        let html=`<div class="wp-lsp-special-hours-block">
-                                            <input type="date" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][${i}][from]" value="">
-                                            a <input type="date" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][${i}][to]" value="">
-                                            <span>Días:</span>
-                                            <?php foreach($days as $j=>$d) { ?>
-                                                <label><input type="checkbox" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][${i}][days][<?php echo $j; ?>]"><?php echo $d[0]; ?></label>
-                                            <?php } ?>
-                                            <input type="time" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][${i}][opens]" value="">
-                                            -
-                                            <input type="time" name="wp_local_schema_pro_options[specialOpeningHoursSpecification][${i}][closes]" value="">
-                                            <button type="button" class="wp-lsp-remove-special-hours">Eliminar</button>
-                                        </div>`;
-                                        list.insertAdjacentHTML('beforeend',html);
-                                        list.querySelectorAll('.wp-lsp-remove-special-hours').forEach(function(btn){
-                                            btn.onclick=function(){ this.parentNode.remove(); };
-                                        });
-                                    };
-                                    document.querySelectorAll('.wp-lsp-remove-special-hours').forEach(function(btn){
-                                        btn.onclick=function(){ this.parentNode.remove(); };
-                                    });
-                                });
-                                </script>
-                            </div>
-                            <style>
-                            .wp-lsp-hours-table td {padding:3px 8px;}
-                            .wp-lsp-special-hours-block {margin-bottom:10px;padding:8px 10px;background:#f5f5f5;border-radius:6px;}
-                            </style>
-                            <?php
+                            echo '<div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
+                                <b>Horario comercial:</b> Define el horario habitual por días.<br>
+                                <b>Horarios especiales:</b> Añade periodos con fechas y días/horas excepcionales (ej: festivos, vacaciones).
+                            </div>';
+                            wp_lsp_render_hours_block('', $options);
                         }
 
-                        // ----- RATINGS -----
-                        if ($sec_key == 'opiniones') {
-                            ?>
-                            <div class="wp-lsp-alert wp-lsp-alert-warning" style="color:#a77a10;">
-                                <b>¡Atención!</b> Si ya tienes ratings generados por otro plugin (WooCommerce, WP Reviews, etc.), <b>no actives los ratings aquí</b> para evitar duplicidad de schema y pérdida de rich snippets.<br>
-                                Marca opiniones solo si no tienes otro sistema de ratings.<br>
-                                <label>
-                                    <input type="checkbox" name="wp_local_schema_pro_options[force_ratings]" value="1" <?php checked($options['force_ratings'] ?? false); ?>>
-                                    <b>Forzar ratings desde este plugin</b> (solo si no hay otro plugin de opiniones activo)
-                                </label>
-                            </div>
-                            <div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
-                                <b>SEO Pro Tip:</b> Solo valores reales y visibles en la web. Si no tienes opiniones auténticas, <b>deja este campo vacío</b>.<br>
-                                Si arrancas con opiniones ficticias, usa muy pocas (máx. 3-5), variadas y creíbles. No abuses.<br>
-                                Actualiza y amplía las opiniones con datos reales ASAP.
-                            </div>
-                            <?php
+                        // ----- TIENDA -----
+                        if ($sec_key == 'tienda') {
+                            echo '<div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
+                                <b>Horario de la tienda:</b> (si aplica, independiente del negocio principal)
+                            </div>';
+                            wp_lsp_render_hours_block('store_', $options);
                         }
 
                         // ----- ORG/PERSONA -----
@@ -229,6 +306,30 @@ function wp_lsp_render_admin_panel() {
                             .org-fields, .person-fields {margin-bottom:1em;}
                             </style>
                             <?php
+                            // Horario de organización (Organization)
+                            echo '<div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
+                                <b>Horario de la organización:</b> (si aplica, solo para datos Organization avanzados)
+                            </div>';
+                            wp_lsp_render_hours_block('org_', $options);
+                        }
+
+                        // ----- RATINGS -----
+                        if ($sec_key == 'opiniones') {
+                            ?>
+                            <div class="wp-lsp-alert wp-lsp-alert-warning" style="color:#a77a10;">
+                                <b>¡Atención!</b> Si ya tienes ratings generados por otro plugin (WooCommerce, WP Reviews, etc.), <b>no actives los ratings aquí</b> para evitar duplicidad de schema y pérdida de rich snippets.<br>
+                                Marca opiniones solo si no tienes otro sistema de ratings.<br>
+                                <label>
+                                    <input type="checkbox" name="wp_local_schema_pro_options[force_ratings]" value="1" <?php checked($options['force_ratings'] ?? false); ?>>
+                                    <b>Forzar ratings desde este plugin</b> (solo si no hay otro plugin de opiniones activo)
+                                </label>
+                            </div>
+                            <div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
+                                <b>SEO Pro Tip:</b> Solo valores reales y visibles en la web. Si no tienes opiniones auténticas, <b>deja este campo vacío</b>.<br>
+                                Si arrancas con opiniones ficticias, usa muy pocas (máx. 3-5), variadas y creíbles. No abuses.<br>
+                                Actualiza y amplía las opiniones con datos reales ASAP.
+                            </div>
+                            <?php
                         }
 
                         // ----- RENDER FIELDS -----
@@ -238,7 +339,6 @@ function wp_lsp_render_admin_panel() {
                             $real_id = $is_org ? substr($field_id, 4) : ($is_person ? substr($field_id,7): $field_id);
                             $field_def = null;
 
-                            // Arrays dinámicos para empleados, founders, awards...
                             if (in_array($real_id, ['employees','founders','awards','award','member','alumniOf','knowsLanguage','knowsAbout','relatedTo','spouse','brand','contactPoint'])) {
                                 $arr = $options[$field_id] ?? [];
                                 echo '<div class="'.($is_org?'org-fields':($is_person?'person-fields':'')).'">';
@@ -287,9 +387,9 @@ function wp_lsp_render_admin_panel() {
         .wp-lsp-alert-info {background:#e3f2fd;}
         .wp-lsp-alert-warning {background:#fff3cd;}
         .wp-lsp-array-list div {margin-bottom:5px;}
+        .wp-lsp-help {margin-left:3px;color:#0073aa;cursor:help;}
         </style>
         <script>
-        // Tabs, arrays dinámicos
         document.addEventListener('DOMContentLoaded',function(){
             let tabs=document.querySelectorAll('.wp-lsp-tab');
             let contents=document.querySelectorAll('.wp-lsp-tab-content');

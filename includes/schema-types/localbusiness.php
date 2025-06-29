@@ -24,28 +24,47 @@ return [
     'telephone' => [
         'type' => 'text',
         'label' => 'Teléfono',
-        'help'  => 'Incluye prefijo internacional (ej: +34 para España).',
+        'help'  => 'Número de teléfono de contacto con prefijo internacional.',
     ],
-    'email' => [
+    //--- CAMPOS FISCALES ---
+    'taxID' => [
         'type' => 'text',
-        'label' => 'Email de contacto',
-        'help'  => 'Correo principal para atención a clientes o consultas generales.',
+        'label' => 'CIF/NIF/NIT',
+        'help'  => 'Introduce el identificador fiscal único del negocio. Ejemplo: B12345678',
     ],
-
-    //--- DIRECCIÓN Y UBICACIÓN ---
+    'vatID' => [
+        'type' => 'text',
+        'label' => 'VAT ID',
+        'help'  => 'Número de IVA intracomunitario si aplica. Ejemplo: ESB12345678',
+    ],
+    //--- POLÍTICAS LEGALES ---
+    'privacyPolicy' => [
+        'type' => 'url',
+        'label' => 'Política de Privacidad',
+        'help'  => 'Enlace a la política de privacidad de tu web.',
+    ],
+    'termsOfService' => [
+        'type' => 'url',
+        'label' => 'Términos y Condiciones',
+        'help'  => 'Enlace a los términos y condiciones de tu web.',
+    ],
+    'cookiesPolicy' => [
+        'type' => 'url',
+        'label' => 'Política de Cookies',
+        'help'  => 'Enlace a la política de cookies de tu web.',
+    ],
+    //--- DIRECCIÓN ---
     'address' => [
         'type' => 'group',
-        'label' => 'Dirección Física',
+        'label' => 'Dirección física',
         'fields' => [
             'streetAddress' => [
                 'type' => 'text',
                 'label' => 'Calle y número',
-                'help'  => 'Dirección completa (calle, número, piso, etc).',
             ],
             'addressLocality' => [
                 'type' => 'text',
-                'label' => 'Ciudad/Población',
-                'help'  => 'Ciudad donde se ubica el negocio.',
+                'label' => 'Ciudad o localidad',
             ],
             'addressRegion' => [
                 'type' => 'text',
@@ -83,7 +102,6 @@ return [
         'label' => 'Enlace a Google Maps',
         'help'  => 'Pega el enlace directo de Google Maps a tu localización.',
     ],
-
     //--- HORARIOS ---
     'openingHoursSpecification' => [
         'type' => 'repeater',
@@ -107,7 +125,6 @@ return [
             ],
         ]
     ],
-
     //--- REDES SOCIALES Y ENLACES EXTERNOS ---
     'sameAs' => [
         'type' => 'multitext',
@@ -119,7 +136,6 @@ return [
         'label' => 'Perfil Google My Business',
         'help'  => 'Enlace público a tu ficha de Google Business.',
     ],
-
     //--- PRODUCTOS Y TIENDA ONLINE ---
     'hasOfferCatalog' => [
         'type' => 'group',
@@ -135,48 +151,24 @@ return [
             ],
             'itemListElement' => [
                 'type' => 'repeater',
-                'label' => 'Productos destacados',
-                'help'  => 'Puedes añadir productos individuales desde una URL externa, con título, imagen y precio.',
+                'label' => 'Productos o servicios',
                 'fields' => [
                     'name' => [
                         'type' => 'text',
-                        'label' => 'Nombre del producto',
+                        'label' => 'Nombre',
                     ],
                     'url' => [
                         'type' => 'url',
-                        'label' => 'URL del producto',
+                        'label' => 'Enlace',
                     ],
-                    'image' => [
-                        'type' => 'image',
-                        'label' => 'Imagen del producto',
+                    'availability' => [
+                        'type' => 'text',
+                        'label' => 'Disponibilidad (ej: InStock, OutOfStock)',
                     ],
-                    'description' => [
-                        'type' => 'textarea',
-                        'label' => 'Descripción',
-                    ],
-                    'offers' => [
-                        'type' => 'group',
-                        'label' => 'Oferta',
-                        'fields' => [
-                            'priceCurrency' => [
-                                'type' => 'text',
-                                'label' => 'Moneda (ej: EUR)',
-                            ],
-                            'price' => [
-                                'type' => 'text',
-                                'label' => 'Precio',
-                            ],
-                            'availability' => [
-                                'type' => 'text',
-                                'label' => 'Disponibilidad (ej: InStock, OutOfStock)',
-                            ],
-                        ]
-                    ]
                 ]
             ]
         ]
     ],
-
     //--- OPINIONES Y VALORACIONES ---
     'aggregateRating' => [
         'type' => 'group',
@@ -221,7 +213,6 @@ return [
             ]
         ]
     ],
-
     //--- SERVICIOS, ÁREAS, MÉTODOS DE PAGO, ETC ---
     'areaServed' => [
         'type' => 'text',
@@ -243,9 +234,18 @@ return [
         ]
     ],
     'paymentAccepted' => [
-        'type' => 'text',
+        'type' => 'select',
         'label' => 'Métodos de pago aceptados',
-        'help'  => 'Ejemplo: Efectivo, Tarjeta, Paypal, Bizum, etc.',
+        'help'  => 'Selecciona los métodos de pago aceptados.',
+        'options' => [
+            'Efectivo' => 'Efectivo',
+            'Tarjeta' => 'Tarjeta',
+            'Paypal' => 'Paypal',
+            'Bizum' => 'Bizum',
+            'Transferencia' => 'Transferencia',
+            'Otro' => 'Otro',
+        ],
+        'multiple' => true,
     ],
     'priceRange' => [
         'type' => 'text',
@@ -257,7 +257,6 @@ return [
         'label' => 'Premios o certificados',
         'help'  => 'Certificaciones, premios o reconocimientos relevantes.',
     ],
-
     //--- EXTRAS AVANZADOS SEO ---
     'founder' => [
         'type' => 'text',
@@ -270,25 +269,46 @@ return [
         'help'  => 'Formato YYYY-MM-DD o solo año.',
     ],
     'isicV4' => [
-        'type' => 'text',
+        'type' => 'select',
         'label' => 'ISIC/NAICS (CNAE)',
-        'help'  => 'Código sectorial según clasificación internacional.',
+        'help'  => 'Selecciona el código sectorial según clasificación internacional.',
+        'options' => [
+            '' => 'Seleccionar',
+            'A' => 'Agricultura, ganadería y pesca',
+            'C' => 'Industria manufacturera',
+            'G' => 'Comercio al por mayor y al por menor',
+            'I' => 'Hostelería',
+            'J' => 'Información y comunicaciones',
+            'K' => 'Actividades financieras y de seguros',
+            'M' => 'Actividades profesionales, científicas y técnicas',
+            'Q' => 'Sanidad y servicios sociales',
+            'R' => 'Actividades artísticas, recreativas y de entretenimiento',
+            'S' => 'Otros servicios',
+            'Z' => 'Otro',
+        ],
     ],
     'numberOfEmployees' => [
-        'type' => 'number',
+        'type' => 'select',
         'label' => 'Número de empleados',
+        'help'  => 'Selecciona el rango de empleados.',
+        'options' => [
+            '' => 'Seleccionar',
+            '0-10' => '0-10',
+            '11-50' => '11-50',
+            '51-200' => '51-200',
+            '201-1000' => '201-1000',
+            '1001+' => 'Más de 1000',
+        ],
     ],
     'legalName' => [
         'type' => 'text',
         'label' => 'Nombre legal',
-    ],
-    'taxID' => [
-        'type' => 'text',
-        'label' => 'CIF/NIF/NIT',
+        'help'  => 'Denominación legal completa de la empresa.',
     ],
     'brand' => [
         'type' => 'text',
         'label' => 'Marca comercial',
+        'help'  => 'Marca o nombre comercial habitual.',
     ],
     'alternateName' => [
         'type' => 'text',
@@ -315,14 +335,10 @@ return [
         'label' => 'Slogan',
         'help'  => 'Eslogan comercial del negocio.',
     ],
-    'vatID' => [
-        'type' => 'text',
-        'label' => 'VAT ID',
-        'help'  => 'Número de IVA intracomunitario si aplica.',
-    ],
     'faxNumber' => [
         'type' => 'text',
         'label' => 'Fax',
+        'help'  => 'Número de fax de contacto (opcional).',
     ],
     'contactPoint' => [
         'type' => 'group',
@@ -353,18 +369,30 @@ return [
         'help'  => 'Asociaciones, cámaras, etc.',
     ],
     'currenciesAccepted' => [
-        'type' => 'text',
+        'type' => 'select',
         'label' => 'Monedas aceptadas',
-        'help'  => 'Ejemplo: EUR, USD, etc.',
+        'help'  => 'Selecciona las monedas aceptadas.',
+        'options' => [
+            'EUR' => 'Euro (EUR)',
+            'USD' => 'Dólar (USD)',
+            'GBP' => 'Libra (GBP)',
+            'MXN' => 'Peso (MXN)',
+            'COP' => 'Peso colombiano (COP)',
+            'BRL' => 'Real brasileño (BRL)',
+            'Otro' => 'Otro',
+        ],
+        'multiple' => true,
     ],
     'hasDriveThrough' => [
         'type' => 'select',
         'label' => 'Tiene drive-through',
+        'help'  => '¿Ofrece servicio drive-through?',
         'options' => ['' => 'No especificar', 'true' => 'Sí', 'false' => 'No'],
     ],
     'smokingAllowed' => [
         'type' => 'select',
         'label' => 'Se permite fumar',
+        'help'  => '¿Está permitido fumar en el local?',
         'options' => ['' => 'No especificar', 'true' => 'Sí', 'false' => 'No'],
     ],
     'specialOpeningHoursSpecification' => [
@@ -372,21 +400,17 @@ return [
         'label' => 'Horarios especiales',
         'help'  => 'Ejemplo: festivos, verano, navidad...',
         'fields' => [
+            'dayOfWeek' => [
+                'type' => 'multitext',
+                'label' => 'Días especiales',
+            ],
             'opens' => [
                 'type' => 'text',
-                'label' => 'Apertura especial',
+                'label' => 'Hora de apertura',
             ],
             'closes' => [
                 'type' => 'text',
-                'label' => 'Cierre especial',
-            ],
-            'validFrom' => [
-                'type' => 'text',
-                'label' => 'Desde (YYYY-MM-DD)',
-            ],
-            'validThrough' => [
-                'type' => 'text',
-                'label' => 'Hasta (YYYY-MM-DD)',
+                'label' => 'Hora de cierre',
             ],
         ]
     ],
