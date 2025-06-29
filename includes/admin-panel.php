@@ -510,6 +510,23 @@ function wp_lsp_render_admin_panel() {
                             <label>Teléfono:</label>
                             <input type="text" name="wp_local_schema_pro_options[secondary_entities][${index}][fields][telephone]" placeholder="Teléfono">
                         </div>
+                        ${type === 'Store' ? `
+                        <div class="wp-lsp-field">
+                            <label>Tipo de tienda:</label>
+                            <select name="wp_local_schema_pro_options[secondary_entities][${index}][fields][storeType]">
+                                <option value="Store">Store (genérico)</option>
+                                <option value="AutomotiveStore">Automotive</option>
+                                <option value="ClothingStore">Clothing</option>
+                                <option value="ElectronicsStore">Electronics</option>
+                                <option value="GroceryStore">Grocery</option>
+                                <option value="HardwareStore">Hardware</option>
+                            </select>
+                        </div>
+                        <div class="wp-lsp-field">
+                            <label>URL de la tienda:</label>
+                            <input type="url" name="wp_local_schema_pro_options[secondary_entities][${index}][fields][storeUrl]" placeholder="https://tienda.ejemplo.com">
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
