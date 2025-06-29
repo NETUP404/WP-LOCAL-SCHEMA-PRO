@@ -113,3 +113,24 @@ function wp_lsp_render_field($field_id, $field_def, $value = '') {
     }
     return "<div class='wp-lsp-field wp-lsp-type-$type'>$html</div>";
 }
+
+/**
+ * Obtiene todas las páginas publicadas para el dropdown de asociación
+ */
+function wp_lsp_get_published_pages() {
+    $pages = get_pages([
+        'status' => 'publish',
+        'number' => 0, // Sin límite
+        'sort_column' => 'post_title',
+        'sort_order' => 'ASC'
+    ]);
+    
+    $page_options = ['' => 'Ninguna (no asociar a página específica)'];
+    
+    foreach ($pages as $page) {
+        $page_url = get_permalink($page->ID);
+        $page_options[$page_url] = $page->post_title . ' (' . $page_url . ')';
+    }
+    
+    return $page_options;
+}

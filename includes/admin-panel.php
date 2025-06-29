@@ -244,16 +244,67 @@ function wp_lsp_render_admin_panel() {
             </select>
             <br><br>
 
-            <!-- Multiselect de secundarios -->
-            <label for="schema_types_secundarios"><b>Tipos/categorías secundarias (multi-select):</b></label>
-            <select id="schema_types_secundarios" name="wp_local_schema_pro_options[schema_types_secundarios][]" multiple size="6">
-                <?php foreach ($all_schema_types as $type): ?>
-                    <option value="<?php echo esc_attr($type); ?>" <?php echo (is_array($sec_types_selected) && in_array($type, $sec_types_selected)) ? 'selected' : ''; ?>>
-                        <?php echo esc_html($type); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <br><br>
+            <!-- Configuración de tipos secundarios con páginas asociadas -->
+            <label><b>Tipos/categorías secundarias:</b></label>
+            <div class="wp-lsp-secondary-types-container" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0;">
+                <div id="wp-lsp-secondary-types-list">
+                    <?php
+                    // Convertir datos antiguos si es necesario
+                    $secondary_types_data = $options['schema_types_secundarios_v2'] ?? [];
+                    
+                    // Migración de datos antiguos
+                    if (empty($secondary_types_data) && !empty($sec_types_selected) && is_array($sec_types_selected)) {
+                        foreach ($sec_types_selected as $type) {
+                            $secondary_types_data[] = [
+                                'type' => $type,
+                                'page_url' => ''
+                            ];
+                        }
+                    }
+                    
+                    $published_pages = wp_lsp_get_published_pages();
+                    
+                    if (empty($secondary_types_data)) {
+                        $secondary_types_data = [['type' => '', 'page_url' => '']];
+                    }
+                    
+                    foreach ($secondary_types_data as $index => $sec_data): ?>
+                        <div class="wp-lsp-secondary-type-item" style="margin-bottom: 15px; padding: 10px; border: 1px solid #e1e1e1; border-radius: 4px;">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label><strong>Tipo de Schema:</strong></label>
+                                    <select name="wp_local_schema_pro_options[schema_types_secundarios_v2][<?php echo $index; ?>][type]" style="width: 100%;">
+                                        <option value="">-- Seleccionar tipo --</option>
+                                        <?php foreach ($all_schema_types as $type): ?>
+                                            <option value="<?php echo esc_attr($type); ?>" <?php selected($sec_data['type'] ?? '', $type); ?>>
+                                                <?php echo esc_html($type); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div style="flex: 2; min-width: 300px;">
+                                    <label><strong>Página asociada:</strong></label>
+                                    <select name="wp_local_schema_pro_options[schema_types_secundarios_v2][<?php echo $index; ?>][page_url]" style="width: 100%;">
+                                        <?php foreach ($published_pages as $url => $title): ?>
+                                            <option value="<?php echo esc_attr($url); ?>" <?php selected($sec_data['page_url'] ?? '', $url); ?>>
+                                                <?php echo esc_html($title); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div style="flex: 0;">
+                                    <button type="button" class="button wp-lsp-remove-secondary-type" style="color: #dc3232;">Eliminar</button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button type="button" id="wp-lsp-add-secondary-type" class="button button-secondary" style="margin-top: 10px;">+ Añadir tipo secundario</button>
+                <p class="description" style="margin-top: 10px;">
+                    <strong>Nota:</strong> Los tipos secundarios solo se mostrarán en las páginas específicas asociadas. 
+                    Si no asocias una página, el tipo secundario no se mostrará en ninguna parte del sitio.
+                </p>
+            </div>
 
             <!-- Campo para enlace Wikipedia/keyword principal -->
             <label>Enlace a Wikipedia (keyword objetivo principal):</label>
@@ -437,6 +488,78 @@ function wp_lsp_render_admin_panel() {
                 btn.onclick=function(){ this.parentNode.remove(); };
             });
         });
+        </script>
+        <script>
+            // Gestión de tipos secundarios dinámicos
+            document.addEventListener('DOMContentLoaded', function() {
+                let secondaryTypeIndex = <?php echo count($secondary_types_data); ?>;
+                
+                // Añadir nuevo tipo secundario
+                document.getElementById('wp-lsp-add-secondary-type').addEventListener('click', function() {
+                    const container = document.getElementById('wp-lsp-secondary-types-list');
+                    const publishedPages = <?php echo json_encode($published_pages); ?>;
+                    const allSchemaTypes = <?php echo json_encode($all_schema_types); ?>;
+                    
+                    let html = `
+                        <div class="wp-lsp-secondary-type-item" style="margin-bottom: 15px; padding: 10px; border: 1px solid #e1e1e1; border-radius: 4px;">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label><strong>Tipo de Schema:</strong></label>
+                                    <select name="wp_local_schema_pro_options[schema_types_secundarios_v2][${secondaryTypeIndex}][type]" style="width: 100%;">
+                                        <option value="">-- Seleccionar tipo --</option>`;
+                    
+                    allSchemaTypes.forEach(function(type) {
+                        html += `<option value="${type}">${type}</option>`;
+                    });
+                    
+                    html += `
+                                    </select>
+                                </div>
+                                <div style="flex: 2; min-width: 300px;">
+                                    <label><strong>Página asociada:</strong></label>
+                                    <select name="wp_local_schema_pro_options[schema_types_secundarios_v2][${secondaryTypeIndex}][page_url]" style="width: 100%;">`;
+                    
+                    Object.keys(publishedPages).forEach(function(url) {
+                        html += `<option value="${url}">${publishedPages[url]}</option>`;
+                    });
+                    
+                    html += `
+                                    </select>
+                                </div>
+                                <div style="flex: 0;">
+                                    <button type="button" class="button wp-lsp-remove-secondary-type" style="color: #dc3232;">Eliminar</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    
+                    container.insertAdjacentHTML('beforeend', html);
+                    secondaryTypeIndex++;
+                    
+                    // Activar el evento de eliminar en el nuevo elemento
+                    bindRemoveEvents();
+                });
+                
+                // Función para activar eventos de eliminar
+                function bindRemoveEvents() {
+                    document.querySelectorAll('.wp-lsp-remove-secondary-type').forEach(function(button) {
+                        button.removeEventListener('click', removeSecondaryType); // Evitar duplicados
+                        button.addEventListener('click', removeSecondaryType);
+                    });
+                }
+                
+                // Función para eliminar tipo secundario
+                function removeSecondaryType(e) {
+                    const items = document.querySelectorAll('.wp-lsp-secondary-type-item');
+                    if (items.length > 1) {
+                        e.target.closest('.wp-lsp-secondary-type-item').remove();
+                    } else {
+                        alert('Debe mantener al menos un tipo secundario. Si no desea ninguno, deje el tipo vacío.');
+                    }
+                }
+                
+                // Activar eventos iniciales
+                bindRemoveEvents();
+            });
         </script>
         <script>
             window.wpLspSchemaFields = <?php echo json_encode($schema_fields); ?>;
