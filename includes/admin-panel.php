@@ -164,6 +164,7 @@ function wp_lsp_render_hours_block($prefix, $options) {
 
 function wp_lsp_render_admin_panel() {
     require_once WP_LSP_PATH . 'includes/all-schema-types.php';
+    global $all_schema_types; // <-- ESTA LÍNEA ES EL FIX, aquí SIEMPRE
     $schema_fields = wp_lsp_get_schema_fields();
     $options = get_option('wp_local_schema_pro_options');
     $current_type = $options['schema_type_principal'] ?? 'LocalBusiness';
@@ -450,4 +451,5 @@ function wp_lsp_render_admin_panel() {
 
 add_action('admin_init', function() {
     register_setting('wp_local_schema_pro_group', 'wp_local_schema_pro_options');
+});ns');
 });
