@@ -113,3 +113,101 @@ function wp_lsp_render_field($field_id, $field_def, $value = '') {
     }
     return "<div class='wp-lsp-field wp-lsp-type-$type'>$html</div>";
 }
+
+// Helper functions for multi-entity management
+
+function wp_lsp_get_entity_fields_for_type($entity_type) {
+    $schema_fields = wp_lsp_get_schema_fields();
+    $base_fields = $schema_fields['LocalBusiness'] ?? [];
+    
+    if ($entity_type === 'Store') {
+        // For Store entities, merge base fields with store-specific fields
+        $store_fields = $schema_fields['Store'] ?? [];
+        return array_merge($base_fields, $store_fields);
+    }
+    
+    return $base_fields;
+}
+
+function wp_lsp_render_entity_form($entity_id, $entity_type, $entity_fields, $prefix = '') {
+    $fields = wp_lsp_get_entity_fields_for_type($entity_type);
+    $sections = wp_lsp_get_entity_sections($entity_type);
+    
+    $html = "<div class='wp-lsp-entity-form' data-entity-id='$entity_id' data-entity-type='$entity_type'>";
+    $html .= "<div class='wp-lsp-entity-header'>";
+    $html .= "<h3>Entidad: $entity_type</h3>";
+    if ($entity_id !== 'main') {
+        $html .= "<button type='button' class='button wp-lsp-duplicate-entity' data-entity-id='$entity_id'>Duplicar</button>";
+        $html .= "<button type='button' class='button wp-lsp-delete-entity' data-entity-id='$entity_id'>Eliminar</button>";
+    }
+    $html .= "</div>";
+    
+    $html .= "<div class='wp-lsp-tabs'>";
+    $i = 0;
+    foreach ($sections as $sec_key => $sec) {
+        $active_class = $i === 0 ? ' active' : '';
+        $html .= "<button type='button' class='wp-lsp-tab$active_class' data-tab='$sec_key'>";
+        $html .= $sec['icon'] . ' ' . esc_html($sec['title']);
+        $html .= "</button>";
+        $i++;
+    }
+    $html .= "</div>";
+    
+    foreach ($sections as $sec_key => $sec) {
+        $display_style = $sec_key === array_key_first($sections) ? '' : 'style="display:none"';
+        $html .= "<div class='wp-lsp-tab-content' data-tab='$sec_key' $display_style>";
+        
+        foreach ($sec['fields'] as $field_id) {
+            if (isset($fields[$field_id])) {
+                $field_name = $prefix ? "{$prefix}[{$field_id}]" : $field_id;
+                $field_value = $entity_fields[$field_id] ?? '';
+                $html .= wp_lsp_render_field($field_name, $fields[$field_id], $field_value);
+            }
+        }
+        
+        $html .= "</div>";
+    }
+    
+    $html .= "</div>";
+    return $html;
+}
+
+function wp_lsp_get_entity_sections($entity_type) {
+    $base_sections = [
+        'general' => [
+            'title' => 'General',
+            'icon' => '<span style="color:#183153;">🏠</span>',
+            'fields' => ['name', 'description', 'image', 'telephone', 'email', 'url']
+        ],
+        'ubicacion' => [
+            'title' => 'Ubicación', 
+            'icon' => '<span style="color:#183153;">📍</span>',
+            'fields' => ['address', 'geo', 'hasMap']
+        ],
+        'horario' => [
+            'title' => 'Horario',
+            'icon' => '<span style="color:#183153;">🕒</span>', 
+            'fields' => ['openingHoursSpecification', 'specialOpeningHoursSpecification']
+        ],
+        'redes' => [
+            'title' => 'Redes',
+            'icon' => '<span style="color:#183153;">🌐</span>',
+            'fields' => ['sameAs', 'googleBusiness']
+        ],
+        'opiniones' => [
+            'title' => 'Opiniones',
+            'icon' => '<span style="color:#183153;">⭐</span>',
+            'fields' => ['aggregateRating', 'review']
+        ],
+    ];
+    
+    if ($entity_type === 'Store') {
+        $base_sections['tienda'] = [
+            'title' => 'Tienda',
+            'icon' => '<span style="color:#183153;">🛒</span>',
+            'fields' => ['enableStoreSchema', 'storeName', 'storeType', 'storeUrl', 'storeDescription', 'storeImage', 'storeTelephone', 'storeAddress', 'storeOpeningHours', 'storeProducts', 'storePayment', 'storeShipping', 'storeAggregateRating', 'storeReviews']
+        ];
+    }
+    
+    return $base_sections;
+}

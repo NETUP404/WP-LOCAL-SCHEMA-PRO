@@ -192,15 +192,8 @@ function wp_lsp_render_admin_panel() {
         ],
         'ubicacion'  => ['title'=>'Ubicación', 'icon'=>'<span style="color:#183153;">📍</span>', 'fields'=>['address','geo','hasMap','areaServed']],
         'horario'    => ['title'=>'Horario',   'icon'=>'<span style="color:#183153;">🕒</span>', 'fields'=>[]],
-        'urls'       => ['title'=>'URLs',      'icon'=>'<span style="color:#183153;">🔗</span>', 'fields'=>['url','externalUrls']],
+        'urls'       => ['title'=>'URLs',      'icon'=>'<span style="color:#183153;">🔗</span>', 'fields'=>['url']],
         'redes'      => ['title'=>'Redes',     'icon'=>'<span style="color:#183153;">🌐</span>', 'fields'=>['sameAs','googleBusiness']],
-        'tienda'     => [
-            'title'=>'Tienda',
-            'icon'=>'<span style="color:#183153;">🛒</span>',
-            'fields'=>array_filter(array_keys($schema_fields['Store']), function($f){
-                return !in_array($f, ['openingHoursSpecification','specialOpeningHoursSpecification']);
-            })
-        ],
         'opiniones'  => ['title'=>'Opiniones', 'icon'=>'<span style="color:#183153;">⭐</span>', 'fields'=>['aggregateRating','review']],
         'orgpersona' => [
             'title'=>'Org/Pers',
@@ -260,6 +253,55 @@ function wp_lsp_render_admin_panel() {
             <input type="url" name="wp_local_schema_pro_options[wikipedia_url_principal]" value="<?php echo esc_attr($options['wikipedia_url_principal'] ?? ''); ?>" style="width:100%">
             <br><br>
 
+            <!-- Global External URLs Section -->
+            <div class="wp-lsp-global-section">
+                <h2>🔗 URLs EXTERNAS GLOBALES</h2>
+                <div class="wp-lsp-alert wp-lsp-alert-info">
+                    <b>Nueva funcionalidad:</b> Las URLs externas (tienda online, otras webs) ahora se gestionan aquí de forma global, separadas de las entidades individuales.
+                </div>
+                <?php 
+                $externalUrls = $options['externalUrls'] ?? [];
+                echo wp_lsp_render_field('externalUrls', [
+                    'label' => 'URLs externas (web, tienda, otras webs)',
+                    'type' => 'repeater',
+                    'fields' => [
+                        'tipo' => [
+                            'label' => 'Tipo de URL',
+                            'type' => 'select',
+                            'options' => [
+                                'main' => 'Web Principal',
+                                'shop' => 'Tienda Online',
+                                'other' => 'Otra Web'
+                            ],
+                        ],
+                        'url' => ['label' => 'URL', 'type' => 'url'],
+                        'descripcion' => ['label' => 'Descripción', 'type' => 'text'],
+                    ]
+                ], $externalUrls); 
+                ?>
+            </div>
+
+            <hr>
+            
+            <!-- Add Secondary Entities Management -->
+            <div class="wp-lsp-secondary-management">
+                <h2>📑 GESTIÓN DE ENTIDADES SECUNDARIAS</h2>
+                <div class="wp-lsp-alert wp-lsp-alert-info">
+                    <b>Nuevo:</b> Ahora puedes crear entidades secundarias independientes (ej: tiendas). La sección "Tienda" se ha movido aquí como entidad secundaria.
+                </div>
+                <button type="button" class="button button-primary wp-lsp-add-secondary" onclick="wpLspAddSecondaryEntity()">Añadir Entidad Secundaria</button>
+                
+                <div id="wp-lsp-secondary-entities">
+                    <?php
+                    // Show existing secondary entities (if migrated from old structure)
+                    $secondary_entities = $options['secondary_entities'] ?? [];
+                    foreach ($secondary_entities as $index => $entity) {
+                        echo wp_lsp_render_secondary_entity_form($index, $entity);
+                    }
+                    ?>
+                </div>
+            </div>
+
             <hr>
             <div class="wp-lsp-tabs">
                 <?php $i=0; foreach ($sections as $sec_key => $sec): ?>
@@ -286,14 +328,6 @@ function wp_lsp_render_admin_panel() {
                                 <b>Horarios especiales:</b> Añade periodos con fechas y días/horas excepcionales (ej: festivos, vacaciones).
                             </div>';
                             wp_lsp_render_hours_block('', $options);
-                        }
-
-                        // ----- TIENDA -----
-                        if ($sec_key == 'tienda') {
-                            echo '<div class="wp-lsp-alert wp-lsp-alert-info" style="color:#183153;">
-                                <b>Horario de la tienda:</b> (si aplica, independiente del negocio principal)
-                            </div>';
-                            wp_lsp_render_hours_block('store_', $options);
                         }
 
                         // ----- ORG/PERSONA -----
@@ -376,8 +410,6 @@ function wp_lsp_render_admin_panel() {
                                 $field_def = $schema_fields['Organization'][$real_id];
                             elseif ($is_person && isset($schema_fields['Person'][$real_id]))
                                 $field_def = $schema_fields['Person'][$real_id];
-                            elseif (isset($schema_fields['Store'][$field_id]))
-                                $field_def = $schema_fields['Store'][$field_id];
                             elseif (isset($schema_fields[$current_type][$field_id]))
                                 $field_def = $schema_fields[$current_type][$field_id];
                             $val = $options[$field_id] ?? '';
@@ -438,6 +470,139 @@ function wp_lsp_render_admin_panel() {
             });
         });
         </script>
+        
+        <!-- Secondary Entity Management Scripts -->
+        <script>
+        function wpLspAddSecondaryEntity() {
+            const type = prompt('Tipo de entidad secundaria (Store, LocalBusiness, etc.):', 'Store');
+            if (!type) return;
+            
+            const container = document.getElementById('wp-lsp-secondary-entities');
+            const index = container.children.length;
+            const timestamp = Date.now();
+            
+            // Create a simplified form for now
+            const html = `
+                <div class="wp-lsp-secondary-entity" data-index="${index}">
+                    <div class="wp-lsp-entity-header">
+                        <h3>🏪 Entidad Secundaria: ${type}</h3>
+                        <div class="wp-lsp-entity-actions">
+                            <button type="button" class="button wp-lsp-duplicate-entity" onclick="wpLspDuplicateEntity(${index})">Duplicar</button>
+                            <button type="button" class="button wp-lsp-delete-entity" onclick="wpLspDeleteEntity(${index})">Eliminar</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="wp_local_schema_pro_options[secondary_entities][${index}][id]" value="secondary_${timestamp}">
+                    <input type="hidden" name="wp_local_schema_pro_options[secondary_entities][${index}][type]" value="${type}">
+                    <div class="wp-lsp-entity-fields">
+                        <div class="wp-lsp-field">
+                            <label>Nombre de la entidad:</label>
+                            <input type="text" name="wp_local_schema_pro_options[secondary_entities][${index}][fields][name]" placeholder="Nombre">
+                        </div>
+                        <div class="wp-lsp-field">
+                            <label>Descripción:</label>
+                            <textarea name="wp_local_schema_pro_options[secondary_entities][${index}][fields][description]" placeholder="Descripción"></textarea>
+                        </div>
+                        <div class="wp-lsp-field">
+                            <label>URL:</label>
+                            <input type="url" name="wp_local_schema_pro_options[secondary_entities][${index}][fields][url]" placeholder="https://...">
+                        </div>
+                        <div class="wp-lsp-field">
+                            <label>Teléfono:</label>
+                            <input type="text" name="wp_local_schema_pro_options[secondary_entities][${index}][fields][telephone]" placeholder="Teléfono">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', html);
+        }
+        
+        function wpLspDuplicateEntity(index) {
+            const entity = document.querySelector(`[data-index="${index}"]`);
+            if (!entity) return;
+            
+            const clone = entity.cloneNode(true);
+            const newIndex = document.getElementById('wp-lsp-secondary-entities').children.length;
+            const timestamp = Date.now();
+            
+            // Update data-index
+            clone.setAttribute('data-index', newIndex);
+            
+            // Update all input names
+            clone.querySelectorAll('input, textarea, select').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    const newName = name.replace(/\[secondary_entities\]\[\d+\]/, `[secondary_entities][${newIndex}]`);
+                    input.setAttribute('name', newName);
+                }
+                
+                // Update ID for the hidden field
+                if (input.type === 'hidden' && name && name.includes('[id]')) {
+                    input.value = `secondary_${timestamp}`;
+                }
+            });
+            
+            // Update onclick handlers
+            clone.querySelectorAll('[onclick]').forEach(btn => {
+                const onclick = btn.getAttribute('onclick');
+                if (onclick) {
+                    btn.setAttribute('onclick', onclick.replace(/\(\d+\)/, `(${newIndex})`));
+                }
+            });
+            
+            entity.parentNode.appendChild(clone);
+        }
+        
+        function wpLspDeleteEntity(index) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta entidad secundaria?')) {
+                return;
+            }
+            
+            const entity = document.querySelector(`[data-index="${index}"]`);
+            if (entity) {
+                entity.remove();
+            }
+        }
+        </script>
+        
+        <style>
+        .wp-lsp-global-section, .wp-lsp-secondary-management {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .wp-lsp-secondary-entity {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .wp-lsp-entity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .wp-lsp-entity-actions button {
+            margin-left: 5px;
+        }
+        .wp-lsp-entity-fields .wp-lsp-field {
+            margin-bottom: 15px;
+        }
+        .wp-lsp-entity-fields label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .wp-lsp-entity-fields input, .wp-lsp-entity-fields textarea {
+            width: 100%;
+            max-width: 400px;
+        }
+        </style>
+        
         <script>
             window.wpLspSchemaFields = <?php echo json_encode($schema_fields); ?>;
             window.wpLspCurrentOptions = <?php echo json_encode($options); ?>;
@@ -447,6 +612,49 @@ function wp_lsp_render_admin_panel() {
         <script src="<?php echo WP_LSP_URL; ?>assets/admin.js?v=6"></script>
     </div>
     <?php
+}
+
+function wp_lsp_render_secondary_entity_form($index, $entity) {
+    $entity_type = $entity['type'] ?? 'Store';
+    $entity_fields = $entity['fields'] ?? [];
+    $entity_id = $entity['id'] ?? 'secondary_' . $index;
+    
+    ob_start();
+    ?>
+    <div class="wp-lsp-secondary-entity" data-index="<?php echo $index; ?>">
+        <div class="wp-lsp-entity-header">
+            <h3>🏪 Entidad Secundaria: <?php echo esc_html($entity_type); ?></h3>
+            <div class="wp-lsp-entity-actions">
+                <button type="button" class="button wp-lsp-duplicate-entity" onclick="wpLspDuplicateEntity(<?php echo $index; ?>)">Duplicar</button>
+                <button type="button" class="button wp-lsp-delete-entity" onclick="wpLspDeleteEntity(<?php echo $index; ?>)">Eliminar</button>
+            </div>
+        </div>
+        
+        <input type="hidden" name="wp_local_schema_pro_options[secondary_entities][<?php echo $index; ?>][id]" value="<?php echo esc_attr($entity_id); ?>">
+        <input type="hidden" name="wp_local_schema_pro_options[secondary_entities][<?php echo $index; ?>][type]" value="<?php echo esc_attr($entity_type); ?>">
+        
+        <div class="wp-lsp-entity-fields">
+            <?php
+            $schema_fields = wp_lsp_get_schema_fields();
+            $fields_to_show = [];
+            
+            // For Store entities, show Store-specific fields
+            if ($entity_type === 'Store' && isset($schema_fields['Store'])) {
+                $fields_to_show = $schema_fields['Store'];
+            } else if (isset($schema_fields[$entity_type])) {
+                $fields_to_show = $schema_fields[$entity_type];
+            }
+            
+            foreach ($fields_to_show as $field_id => $field_def) {
+                $field_name = "secondary_entities[{$index}][fields][{$field_id}]";
+                $field_value = $entity_fields[$field_id] ?? '';
+                echo wp_lsp_render_field($field_name, $field_def, $field_value);
+            }
+            ?>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
 }
 
 add_action('admin_init', function() {
