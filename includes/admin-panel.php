@@ -1,4 +1,15 @@
 <?php
+add_action('admin_menu', function() {
+    add_menu_page(
+        'WP Local Schema PRO',
+        'WP Local Schema PRO',
+        'manage_options',
+        'wp-local-schema-pro',
+        'wp_lsp_render_admin_panel',
+        'dashicons-location',
+        35
+    );
+});
 if (!defined('ABSPATH')) exit;
 
 // Cargar todos los types permitidos de LocalBusiness y subtypes
