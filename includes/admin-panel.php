@@ -1,6 +1,9 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+// Cargar todos los types permitidos de LocalBusiness y subtypes
+require_once WP_LSP_PATH . 'includes/all-schema-types.php';
+
 // --- YOAST SEO ORGANIZATION AUTO-IMPORT & WARNING BLOCK ---
 function wp_lsp_check_yoast_organization_block(&$options) {
     $yoast = get_option('wpseo_titles');
@@ -30,18 +33,6 @@ function wp_lsp_check_yoast_organization_block(&$options) {
     </div>
     <?php
 }
-
-add_action('admin_menu', function() {
-    add_menu_page(
-        'WP Local Schema PRO',
-        'Local Schema PRO',
-        'manage_options',
-        'wp-local-schema-pro',
-        'wp_lsp_render_admin_panel',
-        'dashicons-store',
-        32
-    );
-});
 
 // === BLOQUE HORARIO UNIVERSAL ===
 function wp_lsp_render_hours_block($prefix, $options) {
@@ -82,8 +73,8 @@ function wp_lsp_render_hours_block($prefix, $options) {
             if(empty($specials)) $specials = [[]];
             foreach($specials as $i=>$sp) { ?>
                 <div class="wp-lsp-special-hours-block">
-                    <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][from]" value="<?php echo esc_attr($sp['from']??''); ?>"> a
-                    <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][to]" value="<?php echo esc_attr($sp['to']??''); ?>">
+                    <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][from]" value="<?php echo esc_attr($sp['from']??''); ?>">
+                    a <input type="date" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][to]" value="<?php echo esc_attr($sp['to']??''); ?>">
                     <span>Días:</span>
                     <?php foreach($days as $j=>$d) { ?>
                         <label><input type="checkbox" name="wp_local_schema_pro_options[<?php echo $prefix; ?>specialOpeningHoursSpecification][<?php echo $i; ?>][days][<?php echo $j; ?>]" <?php checked(!empty($sp['days'][$j])); ?>><?php echo $d[0]; ?></label>
@@ -161,16 +152,17 @@ function wp_lsp_render_hours_block($prefix, $options) {
 // === FIN BLOQUE HORARIO UNIVERSAL ===
 
 function wp_lsp_render_admin_panel() {
+    require_once WP_LSP_PATH . 'includes/all-schema-types.php';
     $schema_fields = wp_lsp_get_schema_fields();
     $options = get_option('wp_local_schema_pro_options');
-    $current_type = $options['schema_type'] ?? 'LocalBusiness';
+    $current_type = $options['schema_type_principal'] ?? 'LocalBusiness';
     $enabled = isset($options['enabled']) ? (bool)$options['enabled'] : true;
+    $sec_types_selected = $options['schema_types_secundarios'] ?? [];
 
     // Prefijos para campos Organization/Person
     $org_fields = array_map(function($f){return 'org_'.$f;}, array_keys($schema_fields['Organization']));
     $person_fields = array_map(function($f){return 'person_'.$f;}, array_keys($schema_fields['Person']));
 
-    // --- SOLO CAMPOS NO HORARIO EN FIELDS ---
     $sections = [
         'general'    => [
             'title'=>'General',
@@ -187,13 +179,12 @@ function wp_lsp_render_admin_panel() {
             ]
         ],
         'ubicacion'  => ['title'=>'Ubicación', 'icon'=>'<span style="color:#183153;">📍</span>', 'fields'=>['address','geo','hasMap','areaServed']],
-        'horario'    => ['title'=>'Horario',   'icon'=>'<span style="color:#183153;">🕒</span>', 'fields'=>[]], // No fields de horario aquí
+        'horario'    => ['title'=>'Horario',   'icon'=>'<span style="color:#183153;">🕒</span>', 'fields'=>[]],
         'urls'       => ['title'=>'URLs',      'icon'=>'<span style="color:#183153;">🔗</span>', 'fields'=>['url','externalUrls']],
         'redes'      => ['title'=>'Redes',     'icon'=>'<span style="color:#183153;">🌐</span>', 'fields'=>['sameAs','googleBusiness']],
         'tienda'     => [
             'title'=>'Tienda',
             'icon'=>'<span style="color:#183153;">🛒</span>',
-            // Quita openingHoursSpecification/specialOpeningHoursSpecification aquí
             'fields'=>array_filter(array_keys($schema_fields['Store']), function($f){
                 return !in_array($f, ['openingHoursSpecification','specialOpeningHoursSpecification']);
             })
@@ -202,7 +193,6 @@ function wp_lsp_render_admin_panel() {
         'orgpersona' => [
             'title'=>'Org/Pers',
             'icon'=>'<span style="color:#183153;">🏠👤</span>',
-            // Quita openingHoursSpecification/specialOpeningHoursSpecification aquí también
             'fields'=>array_filter(
                 array_merge(
                     $org_fields, $person_fields,
@@ -216,7 +206,6 @@ function wp_lsp_render_admin_panel() {
     ];
 
     $section_enabled = $options['section_enabled'] ?? [];
-
     ?>
     <div class="wrap wp-lsp-app">
         <h1>WP Local Schema PRO</h1>
@@ -233,12 +222,32 @@ function wp_lsp_render_admin_panel() {
                 </label>
                 <span class="wp-lsp-help" title="Si desactivas, el schema no se insertará en tu web.">ℹ️</span>
             </div>
-            <label for="schema_type"><b>Tipo de Schema (negocio):</b></label>
-            <select id="schema_type" name="wp_local_schema_pro_options[schema_type]" title="Tipo de entidad principal para la web. Lo normal es LocalBusiness.">
-                <?php foreach ($schema_fields as $type => $fields): ?>
+
+            <!-- Selector principal de type -->
+            <label for="schema_type_principal"><b>Tipo principal de Schema (negocio):</b></label>
+            <select id="schema_type_principal" name="wp_local_schema_pro_options[schema_type_principal]" title="Tipo de entidad principal para la web. Lo normal es LocalBusiness.">
+                <?php foreach ($all_schema_types as $type): ?>
                     <option value="<?php echo esc_attr($type); ?>" <?php selected($current_type, $type); ?>><?php echo esc_html($type); ?></option>
                 <?php endforeach; ?>
             </select>
+            <br><br>
+
+            <!-- Multiselect de secundarios -->
+            <label for="schema_types_secundarios"><b>Tipos/categorías secundarias (multi-select):</b></label>
+            <select id="schema_types_secundarios" name="wp_local_schema_pro_options[schema_types_secundarios][]" multiple size="6">
+                <?php foreach ($all_schema_types as $type): ?>
+                    <option value="<?php echo esc_attr($type); ?>" <?php echo (is_array($sec_types_selected) && in_array($type, $sec_types_selected)) ? 'selected' : ''; ?>>
+                        <?php echo esc_html($type); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <br><br>
+
+            <!-- Campo para enlace Wikipedia/keyword principal -->
+            <label>Enlace a Wikipedia (keyword objetivo principal):</label>
+            <input type="url" name="wp_local_schema_pro_options[wikipedia_url_principal]" value="<?php echo esc_attr($options['wikipedia_url_principal'] ?? ''); ?>" style="width:100%">
+            <br><br>
+
             <hr>
             <div class="wp-lsp-tabs">
                 <?php $i=0; foreach ($sections as $sec_key => $sec): ?>
@@ -280,7 +289,7 @@ function wp_lsp_render_admin_panel() {
                             $selected_orgpersona = $options['orgpersona_type'] ?? 'Organization';
                             ?>
                             <div class="wp-lsp-alert wp-lsp-alert-warning" style="color:#a77a10;">
-                                <b>⚠️ Importante:</b> Elige solo <b>Organización</b> o <b>Persona</b>. Si ya tienes este schema en Yoast, Rank Math u otro plugin, <b>no lo rellenes aquí</b>.<br>
+                                <b>⚠️ Importante:</b> Elige solo <b>Organización</b> o <b>Persona</b>. Si ya tienes este schema en Yoast, Rank Math u otro plugin, <b>no lo rellenes aquí</b><br>
                                 <b>SEO Pro Tip:</b> Solo una opción debe estar activa y nunca duplicada.<br>
                                 <a href="https://schema.org/Organization" target="_blank">Organization</a> | <a href="https://schema.org/Person" target="_blank">Person</a>
                             </div>
@@ -317,7 +326,7 @@ function wp_lsp_render_admin_panel() {
                         if ($sec_key == 'opiniones') {
                             ?>
                             <div class="wp-lsp-alert wp-lsp-alert-warning" style="color:#a77a10;">
-                                <b>¡Atención!</b> Si ya tienes ratings generados por otro plugin (WooCommerce, WP Reviews, etc.), <b>no actives los ratings aquí</b> para evitar duplicidad de schema y pérdida de rich snippets.<br>
+                                <b>¡Atención!</b> Si ya tienes ratings generados por otro plugin (WooCommerce, WP Reviews, etc.), <b>no actives los ratings aquí</b> para evitar duplicidad de schema.<br>
                                 Marca opiniones solo si no tienes otro sistema de ratings.<br>
                                 <label>
                                     <input type="checkbox" name="wp_local_schema_pro_options[force_ratings]" value="1" <?php checked($options['force_ratings'] ?? false); ?>>
