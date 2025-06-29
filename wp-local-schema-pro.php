@@ -16,6 +16,8 @@ require_once WP_LSP_PATH . 'includes/field-definitions.php';
 require_once WP_LSP_PATH . 'includes/helpers.php';
 require_once WP_LSP_PATH . 'includes/admin-panel.php';
 require_once WP_LSP_PATH . 'includes/output-schema.php';
+require_once WP_LSP_PATH . 'includes/save-options.php';
+
 
 register_activation_hook(__FILE__, function() {
     if (!get_option('wp_local_schema_pro_options')) {
