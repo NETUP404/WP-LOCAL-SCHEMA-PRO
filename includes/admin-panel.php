@@ -262,7 +262,7 @@ function wp_lsp_render_admin_panel() {
                         }
                     }
                     
-                    $published_pages = wp_lsp_get_published_pages();
+                    $published_pages = function_exists('wp_lsp_get_published_pages') ? wp_lsp_get_published_pages() : ['' => 'Ninguna (no asociar a página específica)'];
                     
                     if (empty($secondary_types_data)) {
                         $secondary_types_data = [['type' => '', 'page_url' => '']];
